@@ -24,14 +24,15 @@ public class RuleSet
 
     private readonly List<Rule> _activeRules = new List<Rule>();
 
-    public bool AddRule()
+    public string AddRule()
     {
         List<Rule> available = all.FindAll(r => !_activeRules.Exists(a => a.Description == r.Description));
-        if (available.Count == 0) return false;
+        if (available.Count == 0) return "";
 
         int rnd = UnityEngine.Random.Range(0, available.Count);
-        _activeRules.Add(available[rnd]);
-        return true;
+        Rule newRule = available[rnd];
+        _activeRules.Add(newRule);
+        return newRule.Description;
     }
 
     public IEnumerable<string> GetRules()

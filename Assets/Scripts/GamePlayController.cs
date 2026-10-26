@@ -1,13 +1,24 @@
 using UnityEngine;
+using System.Collections;
 using System.Collections.Generic;
 
-public class GamePlayController : MonoBehaviour
+public class GamePlayController : BaseGamePlayController
 {
-    RuleSet ruleSet;
 
-    public void OnGenerate()
+    void Awake()
     {
-        Debug.Log("-----------------------------------------------------------------------");
+        RuleSet.all = new List<Rule> {
+            new Rule("Box1 is left", () => GamePlayHelpers.GetX("Box1") < 0.0f),
+            new Rule("Box2 is left", () => GamePlayHelpers.GetX("Box2") < 0.0f),
+            new Rule("Box3 is left", () => GamePlayHelpers.GetX("Box3") < 0.0f),
+            new Rule("Box1 is visible", () => GamePlayHelpers.IsVisible("Box1")),
+            new Rule("Box2 is visible", () => GamePlayHelpers.IsVisible("Box2")),
+            new Rule("Box3 is visible", () => GamePlayHelpers.IsVisible("Box3")),
+        };
+    }
+
+    private void SetupScene()
+    {
         Transform box1 = GamePlayHelpers.Find("Box1");
         Transform box2 = GamePlayHelpers.Find("Box2");
         Transform box3 = GamePlayHelpers.Find("Box3");
@@ -18,38 +29,59 @@ public class GamePlayController : MonoBehaviour
         if (GamePlayHelpers.RandomBool()) GamePlayHelpers.MakeVisible(box2, true);
         if (GamePlayHelpers.RandomBool()) GamePlayHelpers.MakeVisible(box3, true);
         if (GamePlayHelpers.RandomBool()) GamePlayHelpers.MakeVisible(box4, true);
-
-        RuleSet.all = new List<Rule> {
-            new Rule("Box1 is left", () => GamePlayHelpers.GetX("Box1") < 0.0f),
-            new Rule("Box2 is left", () => GamePlayHelpers.GetX("Box2") < 0.0f),
-            new Rule("Box3 is left", () => GamePlayHelpers.GetX("Box3") < 0.0f),
-            new Rule("Box1 is visible", () => GamePlayHelpers.IsVisible("Box1")),
-            new Rule("Box2 is visible", () => GamePlayHelpers.IsVisible("Box2")),
-            new Rule("Box3 is visible", () => GamePlayHelpers.IsVisible("Box3")),
-        };
-
-        ruleSet = new RuleSet();
-        ruleSet.AddRule();
-        ruleSet.AddRule();
-        ruleSet.AddRule();
-
-        Debug.Log("Rules: " + string.Join(",", ruleSet.GetRules()));
     }
 
-    public void OnOpen()
+    override protected IEnumerator HandleGameplayLoop() 
     {
-        print("You opened the door...");
-        bool allPassed = ruleSet.TestAll();
-        if (allPassed) print("It was SAFE!");
-        else print("It was NOT SAFE :(");
-    }
+        RuleSet ruleSet = new RuleSet();
 
-    public void OnDontOpen()
-    {
-        print("You didnt opened the door...");
-        bool allPassed = ruleSet.TestAll();
-        if (allPassed) print("It was SAFE! :(");
-        else print("It was NOT SAFE :D Good call!");
+        do {
+            SetupScene();
+            yield return new WaitForSeconds(2);
+
+            ShowMessage("Trick or treat!");
+            yield return new WaitForSeconds(2);
+
+            Debug.Log("Rules: " + string.Join(",", ruleSet.GetRules()));
+            
+            ShowMessage("Make a choice!");
+            yield return WaitForPlayerInput();
+
+            if (playerWantsToOpenDoor) {
+                ShowMessage("You opened the door...");
+                yield return new WaitForSeconds(2);
+                bool allPassed = ruleSet.TestAll();
+                if (allPassed) {
+                    ShowMessage("It was SAFE! You were lucky this time...");
+                } else {
+                    ShowMessage("It was NOT SAFE :(");
+                    yield return new WaitForSeconds(1);
+                    health -= 25;
+                }
+            } else {
+                ShowMessage("You didnt open the door...");
+                yield return new WaitForSeconds(2);
+                bool allPassed = ruleSet.TestAll();
+                if (allPassed) {
+                    ShowMessage("It was SAFE! :( The ghouls are upset now...");
+                    yield return new WaitForSeconds(1);
+                    health -= 25;
+                } else {
+                    ShowMessage("It was NOT SAFE :D Good call!");
+                }
+            }
+
+            yield return new WaitForSeconds(3);
+
+            if (health > 0) {
+                string newRule = ruleSet.AddRule();
+                ShowMessage($"New rule: {newRule}");
+                yield return new WaitForSeconds(4);
+            }
+
+        } while (health > 0);
+
+        ShowMessage("Yo ded bruh");
     }
 
 }
